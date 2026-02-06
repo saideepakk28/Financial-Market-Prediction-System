@@ -17,15 +17,17 @@ def preprocess_data(file="AAPL.csv"):
     df["Date"] = pd.to_datetime(df["Date"])
     df.set_index("Date", inplace=True)
 
-    # Normalize Close prices
-    scaler = MinMaxScaler()
-    df["Close"] = scaler.fit_transform(df[["Close"]])
+    # Normalize Close prices - REMOVED to avoid double normalization
+    # scaler = MinMaxScaler()
+    # df["Close"] = scaler.fit_transform(df[["Close"]])
 
     # Save processed data
     df.to_csv("processed_stock_data.csv")
     print("✅ Data Preprocessing Done! Saved as 'processed_stock_data.csv'")
 
-    return df, scaler
+    print("✅ Data Preprocessing Done! Saved as 'processed_stock_data.csv'")
+
+    return df
 
 if __name__ == "__main__":
     preprocess_data()

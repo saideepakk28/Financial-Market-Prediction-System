@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Market Prediction</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #1e40af;
+            --background-color: #f3f4f6;
+            --card-background: #ffffff;
+            --text-color: #1f2937;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            background: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--text-color);
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        input[type="number"] {
+            padding: 10px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 150px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>📈 AI Stock Market Predictor</h1>
+
+        <div class="controls">
+            <label for="days">Days to Predict:</label>
+            <input type="number" id="days" value="10" min="1" max="100">
+            <button onclick="predict()">Predict</button>
+        </div>
+
+        <div class="loading" id="loading">Using AI to forecast trends...</div>
+
+        <div class="chart-container">
+            <canvas id="stockChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let stockChart;
+
+        async function predict() {
+            const days = document.getElementById('days').value;
+            const loading = document.getElementById('loading');
+
+            loading.style.display = 'block';
+
+            try {
+                const response = await fetch(`/predict?days=${days}`);
+                const data = await response.json();
+
+                updateChart(data.history, data.predictions, days);
+            } catch (error) {
+                console.error('Error fetching prediction:', error);
+                alert('Failed to fetch predictions. Make sure the server is running.');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function updateChart(history, predictions, days) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+
+            // Generate labels for history and prediction
+            const historyLabels = history.map((_, i) => `Past Day ${history.length - i}`);
+            const predictionLabels = Array.from({ length: days }, (_, i) => `Future Day ${i + 1}`);
+            const labels = [...historyLabels, ...predictionLabels];
+
+            // Align data: History ends where prediction begins
+            // We duplicate the last history point as the start of prediction for visual continuity
+            const predictionData = Array(history.length - 1).fill(null);
+            predictionData.push(history[history.length - 1]);
+            predictionData.push(...predictions);
+
+            const displayHistory = [...history, ...Array(days).fill(null)];
+
+            if (stockChart) {
+                stockChart.destroy();
+            }
+
+            stockChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Historical Prices',
+                            data: history,
+                            borderColor: '#6b7280', // Gray for history
+                            backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0, // Hide points for history for cleaner look
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Predicted Future',
+                            data: predictionData,
+                            borderColor: '#2563eb', // Blue for prediction
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#ffffff',
+                            pointBorderColor: '#2563eb',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: false,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Apple (AAPL) Stock Forecast`
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#f3f4f6'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            },
+                            ticks: {
+                                callback: function (value) {
+                                    return '$' + value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 10 // Limit labels to avoid clutter
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initial prediction on load
+        predict();
+    </script>
+
+</body>
+
+</html>
